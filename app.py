@@ -1,5 +1,6 @@
 # app.py
 import os
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
@@ -25,6 +26,17 @@ PRESETS = {
         "250x250": (250, 250, 9, 14),
         "300x300": (300, 300, 10, 15),
     },
+    "I形鋼": {
+        "100x75x5x8": (75, 100, 5, 8),
+        "150x75x5.5x9.5": (75, 150, 5.5, 9.5),
+        "200x100x7x10": (100, 200, 7, 10),
+        "250x125x7.5x12.5": (125, 250, 7.5, 12.5),
+    },
+    "T形鋼": {
+        "100x100x6x8": (100, 100, 6, 8),
+        "150x150x7x10": (150, 150, 7, 10),
+        "200x200x8x12": (200, 200, 8, 12),
+    },
     "角形鋼管": {
         "50x50x1.6": (50, 50, 1.6, 1.6),
         "100x100x3.2": (100, 100, 3.2, 3.2),
@@ -42,12 +54,41 @@ PRESETS = {
         "75x75x6": (75, 75, 6, 6),
         "100x100x10": (100, 100, 10, 10),
     },
+    "不等辺山形鋼": {
+        "75x50x6": (50, 75, 6, 6),
+        "100x75x7": (75, 100, 7, 7),
+        "150x90x9": (90, 150, 9, 9),
+    },
     "溝形鋼": {
         "100x50x5x7.5": (50, 100, 5, 7.5),
         "150x75x6.5x10": (75, 150, 6.5, 10),
         "200x90x8x13.5": (90, 200, 8, 13.5),
+    },
+    "平鋼": {
+        "50x6": (50, 0, 6, 0),
+        "100x9": (100, 0, 9, 0),
+        "150x12": (150, 0, 12, 0),
+    },
+    "角鋼": {
+        "16x16": (16, 0, 0, 0),
+        "25x25": (25, 0, 0, 0),
+        "50x50": (50, 0, 0, 0),
+    },
+    "丸鋼": {
+        "16": (16, 0, 0, 0),
+        "25": (25, 0, 0, 0),
+        "50": (50, 0, 0, 0),
     }
 }
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class App(ctk.CTk):
     def __init__(self):
@@ -115,8 +156,47 @@ class App(ctk.CTk):
         self.btn_export = ctk.CTkButton(self.frame_right, text="ファイルを作成して保存", height=40, font=ctk.CTkFont(weight="bold"), command=self.export_file)
         self.btn_export.pack(fill="x", padx=10, pady=20)
 
+        # READMEボタンを追加
+        self.btn_readme = ctk.CTkButton(
+            self.frame_right, 
+            text="使い方を確認 (README)", 
+            fg_color="transparent", 
+            border_width=1, 
+            text_color=("gray10", "gray90"),
+            command=self.show_readme
+        )
+        self.btn_readme.pack(fill="x", padx=10, pady=(0, 20))
+
         # 初期化
         self.update_preset_list(self.type_var.get())
+
+    def show_readme(self):
+        readme_path = resource_path("README.md")
+        content = "README.md が見つかりませんでした。"
+        
+        if os.path.exists(readme_path):
+            try:
+                with open(readme_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            except Exception as e:
+                content = f"ファイルの読み込み中にエラーが発生しました:\n{str(e)}"
+        
+        # サブウィンドウの作成
+        help_win = ctk.CTkToplevel(self)
+        help_win.title("使い方 (README)")
+        help_win.geometry("600x500")
+        help_win.minsize(400, 300)
+        
+        # メインウィンドウを親として前面に保持する設定
+        help_win.transient(self)
+        
+        # テキストボックスの配置
+        textbox = ctk.CTkTextbox(help_win, wrap="word", font=ctk.CTkFont(size=13))
+        textbox.pack(fill="both", expand=True, padx=10, pady=10)
+        textbox.insert("0.0", content)
+        textbox.configure(state="disabled")  # 読み取り専用に設定
+        
+        help_win.focus_force()
 
     def update_preset_list(self, choice):
         presets = list(PRESETS[choice].keys())
@@ -124,13 +204,23 @@ class App(ctk.CTk):
         self.combo_preset.set(presets[0])
         self.apply_preset(presets[0])
 
-        # 種類に応じたフィールドの有効/無効化
-        if choice == "円形鋼管":
+    def update_input_states(self, steel_type):
+        # 一旦すべて有効化
+        for key in ["width", "height", "t1", "t2"]:
+            self.entries[key].configure(state="normal")
+
+        # 種類に応じたフィールドの無効化
+        if steel_type in ["円形鋼管", "丸鋼"]:
+            self.entries["height"].configure(state="disabled")
+            self.entries["t1"].configure(state="normal" if steel_type == "円形鋼管" else "disabled")
+            self.entries["t2"].configure(state="disabled")
+        elif steel_type == "角鋼":
+            self.entries["height"].configure(state="disabled")
+            self.entries["t1"].configure(state="disabled")
+            self.entries["t2"].configure(state="disabled")
+        elif steel_type == "平鋼":
             self.entries["height"].configure(state="disabled")
             self.entries["t2"].configure(state="disabled")
-        else:
-            self.entries["height"].configure(state="normal")
-            self.entries["t2"].configure(state="normal")
 
     def apply_preset(self, choice):
         steel_type = self.type_var.get()
@@ -141,32 +231,45 @@ class App(ctk.CTk):
             self.entries[key].delete(0, tk.END)
         
         self.entries["width"].insert(0, str(w))
-        self.entries["height"].insert(0, str(h))
-        self.entries["t1"].insert(0, str(t1))
-        self.entries["t2"].insert(0, str(t2))
+        if h > 0: self.entries["height"].insert(0, str(h))
+        if t1 > 0: self.entries["t1"].insert(0, str(t1))
+        if t2 > 0: self.entries["t2"].insert(0, str(t2))
 
-        if steel_type == "円形鋼管":
-            self.entries["height"].configure(state="disabled")
-            self.entries["t2"].configure(state="disabled")
+        self.update_input_states(steel_type)
 
     def get_dimensions(self):
         try:
+            steel_type = self.type_var.get()
             w = float(self.entries["width"].get())
-            h = float(self.entries["height"].get()) if self.entries["height"].get() else w
-            t1 = float(self.entries["t1"].get())
-            t2 = float(self.entries["t2"].get()) if self.entries["t2"].get() else t1
+            
+            h_str = self.entries["height"].get()
+            h = float(h_str) if h_str else (w if steel_type in ["角形鋼管", "角鋼"] else 0.0)
+            
+            t1_str = self.entries["t1"].get()
+            t1 = float(t1_str) if t1_str else 0.0
+            
+            t2_str = self.entries["t2"].get()
+            t2 = float(t2_str) if t2_str else t1
+            
             return w, h, t1, t2
         except ValueError:
             messagebox.showerror("エラー", "寸法には数値を入力してください。")
             return None
 
     def create_polygon(self, steel_type, w, h, t1, t2):
-        if steel_type == "H形鋼":
+        if steel_type in ["H形鋼", "I形鋼"]:
             # 断面の中心を原点とする
             pts = [
                 (-w/2, h/2), (w/2, h/2), (w/2, h/2-t2), (t1/2, h/2-t2),
                 (t1/2, -h/2+t2), (w/2, -h/2+t2), (w/2, -h/2), (-w/2, -h/2),
                 (-w/2, -h/2+t2), (-t1/2, -h/2+t2), (-t1/2, h/2-t2), (-w/2, h/2-t2)
+            ]
+            return Polygon(pts)
+            
+        elif steel_type == "T形鋼":
+            pts = [
+                (-w/2, h/2), (w/2, h/2), (w/2, h/2-t2), (t1/2, h/2-t2),
+                (t1/2, -h/2), (-t1/2, -h/2), (-t1/2, h/2-t2), (-w/2, h/2-t2)
             ]
             return Polygon(pts)
         
@@ -180,10 +283,10 @@ class App(ctk.CTk):
             inner = Point(0, 0).buffer(w/2 - t1)
             return outer.difference(inner)
 
-        elif steel_type == "等辺山形鋼":
+        elif steel_type in ["等辺山形鋼", "不等辺山形鋼"]:
             pts = [
-                (-w/2, h/2), (-w/2+t1, h/2), (-w/2+t1, -h/2+t1),
-                (w/2, -h/2+t1), (w/2, -h/2), (-w/2, -h/2)
+                (-w/2, h/2), (-w/2+t1, h/2), (-w/2+t1, -h/2+t2),
+                (w/2, -h/2+t2), (w/2, -h/2), (-w/2, -h/2)
             ]
             return Polygon(pts)
 
@@ -193,6 +296,21 @@ class App(ctk.CTk):
                 (-w/2+t1, -h/2+t2), (w/2, -h/2+t2), (w/2, -h/2), (-w/2, -h/2)
             ]
             return Polygon(pts)
+
+        elif steel_type == "平鋼":
+            pts = [
+                (-w/2, t1/2), (w/2, t1/2), (w/2, -t1/2), (-w/2, -t1/2)
+            ]
+            return Polygon(pts)
+
+        elif steel_type == "角鋼":
+            pts = [
+                (-w/2, w/2), (w/2, w/2), (w/2, -w/2), (-w/2, -w/2)
+            ]
+            return Polygon(pts)
+
+        elif steel_type == "丸鋼":
+            return Point(0, 0).buffer(w/2)
 
     def export_file(self):
         dims = self.get_dimensions()
@@ -204,10 +322,18 @@ class App(ctk.CTk):
         fmt = self.format_var.get()
         ext = fmt.split(" ")[0]
 
+        # 種類に応じてデフォルトファイル名を変更
+        if steel_type in ["丸鋼", "角鋼"]:
+            name_part = f"{w}"
+        elif steel_type == "平鋼":
+            name_part = f"{w}x{t1}"
+        else:
+            name_part = f"{w}x{h}"
+
         file_path = filedialog.asksaveasfilename(
             defaultextension=ext,
             filetypes=[(f"{ext[1:].upper()} files", f"*{ext}")],
-            initialfile=f"{steel_type}_{w}x{h}{ext}"
+            initialfile=f"{steel_type}_{name_part}{ext}"
         )
 
         if not file_path:
