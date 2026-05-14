@@ -29,16 +29,13 @@ jobs:
         --onefile 
         --noconsole 
         --clean 
-        --name "MiyaGantt-v2.2.0" 
-        --icon icon.ico 
+        --name "SteelSurfaceMiya-v1.0.0" 
         --add-data "README.md;." 
-        --add-data "icon.ico;." 
-        --collect-all PySide6 
-        --hidden-import jpholiday 
+        --collect-all customtkinter 
         app.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: MiyaGantt-v2.2.0
-        path: dist/MiyaGantt-v2.2.0.exe
+        name: SteelSurfaceMiya-v1.0.0
+        path: dist/SteelSurfaceMiya-v1.0.0.exe
