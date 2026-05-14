@@ -90,8 +90,7 @@ class App(ctk.CTk):
             ("width", "幅 (B) / 外径:"),
             ("height", "高さ (H):"),
             ("t1", "厚さ1 (t1 / ウェブ厚):"),
-            ("t2", "厚さ2 (t2 / フランジ厚):"),
-            ("length", "長さ (L):")
+            ("t2", "厚さ2 (t2 / フランジ厚):")
         ]
 
         for key, label_text in fields:
@@ -101,9 +100,6 @@ class App(ctk.CTk):
             entry = ctk.CTkEntry(frame, width=100)
             entry.pack(side="right")
             self.entries[key] = entry
-
-        # 初期値設定（長さのデフォルト）
-        self.entries["length"].insert(0, "1000")
 
         # === 右ペイン：エクスポート設定 ===
         self.frame_right = ctk.CTkFrame(self)
@@ -159,8 +155,7 @@ class App(ctk.CTk):
             h = float(self.entries["height"].get()) if self.entries["height"].get() else w
             t1 = float(self.entries["t1"].get())
             t2 = float(self.entries["t2"].get()) if self.entries["t2"].get() else t1
-            length = float(self.entries["length"].get())
-            return w, h, t1, t2, length
+            return w, h, t1, t2
         except ValueError:
             messagebox.showerror("エラー", "寸法には数値を入力してください。")
             return None
@@ -204,7 +199,7 @@ class App(ctk.CTk):
         if not dims:
             return
         
-        w, h, t1, t2, length = dims
+        w, h, t1, t2 = dims
         steel_type = self.type_var.get()
         fmt = self.format_var.get()
         ext = fmt.split(" ")[0]
@@ -212,7 +207,7 @@ class App(ctk.CTk):
         file_path = filedialog.asksaveasfilename(
             defaultextension=ext,
             filetypes=[(f"{ext[1:].upper()} files", f"*{ext}")],
-            initialfile=f"{steel_type}_{w}x{h}_L{length}{ext}"
+            initialfile=f"{steel_type}_{w}x{h}{ext}"
         )
 
         if not file_path:
@@ -224,7 +219,7 @@ class App(ctk.CTk):
             if ext == ".dxf":
                 self.export_dxf(poly, file_path)
             else:
-                self.export_3d(poly, length, file_path, ext)
+                self.export_3d(poly, file_path, ext)
             
             messagebox.showinfo("成功", f"ファイルを保存しました:\n{file_path}")
 
@@ -251,11 +246,15 @@ class App(ctk.CTk):
             
         doc.saveas(file_path)
 
-    def export_3d(self, poly, length, file_path, ext):
-        # 2DポリゴンをZ方向に押し出して3Dメッシュを作成
-        mesh = trimesh.creation.extrude_polygon(poly, height=length)
-        # 向きや原点の調整 (押し出しはZ+方向に行われるため、中心を原点に合わせる)
-        mesh.apply_translation([0, 0, -length/2])
+    def export_3d(self, poly, file_path, ext):
+        # 2Dポリゴンを三角メッシュ化してサーフェスを作成
+        vertices, faces = trimesh.creation.triangulate_polygon(poly)
+        
+        # 2Dの頂点データにZ=0を追加して3D座標に変換
+        vertices_3d = np.column_stack((vertices, np.zeros(len(vertices))))
+        
+        # 面データのみのTrimeshを作成
+        mesh = trimesh.Trimesh(vertices=vertices_3d, faces=faces)
         
         mesh.export(file_path)
 

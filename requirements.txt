@@ -3,3 +3,4 @@ trimesh==4.0.5
 shapely==2.0.2
 numpy==1.26.2
 ezdxf==1.1.2
+mapbox-earcut
