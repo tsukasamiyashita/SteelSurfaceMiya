@@ -151,10 +151,21 @@ class App(ctk.CTk):
         ctk.CTkLabel(self.frame_right, text="ファイル形式:").pack(anchor="w", padx=10)
         self.format_var = ctk.StringVar(value=".stl")
         self.combo_format = ctk.CTkComboBox(self.frame_right, variable=self.format_var, values=[".stl", ".obj", ".ply", ".dxf (2D断面)"])
-        self.combo_format.pack(fill="x", padx=10, pady=(0, 30))
+        self.combo_format.pack(fill="x", padx=10, pady=(0, 10))
+
+        # 拡張子の特徴について表示するボタンを追加
+        self.btn_ext_info = ctk.CTkButton(
+            self.frame_right,
+            text="拡張子の特徴について",
+            fg_color="transparent",
+            border_width=1,
+            text_color=("gray10", "gray90"),
+            command=self.show_extension_info
+        )
+        self.btn_ext_info.pack(fill="x", padx=10, pady=(0, 20))
 
         self.btn_export = ctk.CTkButton(self.frame_right, text="ファイルを作成して保存", height=40, font=ctk.CTkFont(weight="bold"), command=self.export_file)
-        self.btn_export.pack(fill="x", padx=10, pady=20)
+        self.btn_export.pack(fill="x", padx=10, pady=(0, 20))
 
         # READMEボタンを追加
         self.btn_readme = ctk.CTkButton(
@@ -169,6 +180,68 @@ class App(ctk.CTk):
 
         # 初期化
         self.update_preset_list(self.type_var.get())
+
+    def show_extension_info(self):
+        content = """3D CADのファイル拡張子は、用途に合わせて「中間ファイル」「ポリゴンデータ」「ネイティブファイル」の3つに大別されます。それぞれの特徴は以下の通りです。
+
+1. 中間ファイル（異なるCAD間のデータ連携用）
+ソフトの垣根を越えて設計データをやり取りするための汎用フォーマットです。機械設計では主にこの形式を用いてデータを受け渡します。
+
+・STEP (.step, .stp)
+現在の主流規格（ISO準拠）です。ソリッド（中身の詰まった立体）とサーフェス（表面の面）の情報を保持でき、変換時の形状欠損が少ないため、最も信頼性が高いフォーマットです。
+
+・Parasolid (.x_t, .x_b)
+Siemens社の3Dカーネル（計算エンジン）に依存した形式です。SolidWorksやNXなど、同等のカーネルを採用しているCAD間での受け渡しにおいて、STEP以上の高い互換性と安定性を発揮します。
+
+・IGES (.iges, .igs)
+古くからある規格ですが、主にサーフェスデータとして変換されるため、別ソフトで開いた際に「面が剥がれる」「立体として認識されない」などの変換エラーが起きやすい傾向があります。現在はSTEPへの移行が進んでいます。
+
+2. ポリゴン・メッシュデータ（3Dプリント・解析・CG用）
+立体を細かい三角形（ポリゴン）の集合体として表現する形式です。表面の形状を表すのみであるため、CAD上での寸法変更や穴あけといった後からの再編集には不向きです。
+
+・STL (.stl)
+3Dプリンター用のデファクトスタンダードです。純粋な形状（メッシュ）データのみを保持し、色や材質の情報は持ちません。
+
+・OBJ (.obj)
+CGソフトや3Dスキャナーで広く利用されます。形状に加えて、色やテクスチャ（表面の質感）の情報を保持できます。
+
+・3MF (.3mf)
+STLの次世代規格として策定された形式です。色、材質、内部のラティス（格子）構造などの詳細情報を1つのファイルに格納できます。
+
+3. ネイティブファイル（特定ソフト専用）
+各CADソフト固有の保存形式です。設計履歴（押し出し、カットなどの手順）や拘束条件を完全に保持できますが、原則として作成元のソフトでしか正確に編集できません。
+
+・AutoCAD (.dwg, .dxf)
+2D図面が主体ですが、3Dソリッドやメッシュデータを含めることも可能です。
+
+・SolidWorks (.sldprt, .sldasm)
+部品（パーツ）と組立（アセンブリ）で拡張子が分かれます。機械設備分野で高いシェアを持ちます。
+
+・CATIA (.CATPart, .CATProduct)
+曲面を多用する自動車や航空宇宙産業の標準フォーマットです。
+
+・Fusion 360 (.f3d)
+クラウドベースのCAD/CAM/CAEツール用形式です。
+
+・Rhinoceros (.3dm)
+プロダクトデザインなど、自由曲面の作成に特化したサーフェスモデラーの標準形式です。"""
+
+        # サブウィンドウの作成
+        info_win = ctk.CTkToplevel(self)
+        info_win.title("3D CADファイル拡張子の特徴")
+        info_win.geometry("650x600")
+        info_win.minsize(500, 400)
+        
+        # メインウィンドウを親として前面に保持する設定
+        info_win.transient(self)
+        
+        # テキストボックスの配置
+        textbox = ctk.CTkTextbox(info_win, wrap="word", font=ctk.CTkFont(size=13))
+        textbox.pack(fill="both", expand=True, padx=10, pady=10)
+        textbox.insert("0.0", content)
+        textbox.configure(state="disabled")  # 読み取り専用に設定
+        
+        info_win.focus_force()
 
     def show_readme(self):
         readme_path = resource_path("README.md")
